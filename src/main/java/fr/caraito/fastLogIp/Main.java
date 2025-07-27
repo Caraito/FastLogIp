@@ -36,7 +36,7 @@ public class Main extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         getCommand("login").setExecutor(this);
         getCommand("regentoken").setExecutor(new RegenToken(this));
-        new LoginChecker().runTaskTimer(this, 20L, 20L); // Check login timeout
+        new LoginChecker().runTaskTimer(this, 20L, 20L);
 
     }
 
@@ -173,7 +173,7 @@ public class Main extends JavaPlugin implements Listener {
         }
 
         p.getInventory().setContents(contents);
-        invCfg.set("inventory." + p.getName().toLowerCase(), null); // clean
+        invCfg.set("inventory." + p.getName().toLowerCase(), null);
         try {
             invCfg.save(invFile);
         } catch (IOException e) {

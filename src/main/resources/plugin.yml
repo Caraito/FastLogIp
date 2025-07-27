@@ -1,7 +1,7 @@
 name: FastLogIp
 version: '1.0'
 main: fr.caraito.fastLogIp.Main
-api-version: '1.20'
+api-version: '1.21'
 authors: [ Caraito ]
 commands:
   login:

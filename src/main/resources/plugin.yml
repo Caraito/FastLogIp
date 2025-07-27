@@ -1,0 +1,10 @@
+name: FastLogIp
+version: '1.0'
+main: fr.caraito.fastLogIp.Main
+api-version: '1.20'
+authors: [ Caraito ]
+commands:
+  login:
+    description: Permet de se /login
+  regentoken:
+    description: Régénerer son token

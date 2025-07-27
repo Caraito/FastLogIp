@@ -56,6 +56,10 @@ Tu peux poser tes questions :
 - Par message privé
 - Ou ouvrir une issue sur GitHub (si dispo)
 
+## Note
+
+A noter que les personnes habitant chez vous peuvent aussi se connencter via la même IP.
+
 ## 📄 Licence
 
 Ce plugin est distribué sous licence **MIT** (voir fichier LICENSE).

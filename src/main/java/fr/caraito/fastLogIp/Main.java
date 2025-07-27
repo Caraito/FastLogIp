@@ -36,6 +36,7 @@ public class Main extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this, this);
         getCommand("login").setExecutor(this);
         getCommand("regentoken").setExecutor(new RegenToken(this));
+        getCommand("adminregentoken").setExecutor(new AdminRegenToken(this));
         new LoginChecker().runTaskTimer(this, 20L, 20L);
 
     }

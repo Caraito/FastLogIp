@@ -8,3 +8,6 @@ commands:
     description: Permet de se /login
   regentoken:
     description: Régénerer son token
+  adminregentoken:
+    description: Régénérer le token d'un joueur
+    permission: fastlogip.admin

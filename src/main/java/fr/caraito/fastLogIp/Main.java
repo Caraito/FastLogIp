@@ -1,5 +1,7 @@
 package fr.caraito.fastLogIp;
 
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.*;
 import org.bukkit.command.*;
 import org.bukkit.configuration.file.*;
@@ -98,15 +100,31 @@ public class Main extends JavaPlugin implements Listener {
             data.set("players." + p.getName().toLowerCase() + ".token", token);
             saveData();
             isLogged.put(p.getName().toLowerCase(), true);
-            p.sendMessage(ChatColor.GREEN + "Bienvenue, vous êtes automatiquement connecté.");
-            p.sendMessage(ChatColor.YELLOW + "Voici votre token : §e" + token);
-            p.sendMessage(ChatColor.GRAY + "Gardez-le précieusement !");
-            p.sendMessage(ChatColor.GRAY + "Il permettra de vous reconnecter");
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    p.sendMessage(ChatColor.GREEN + "Bienvenue, vous êtes automatiquement connecté.");
+                    p.sendMessage(ChatColor.YELLOW + "Voici votre token : §e" + token);
+                    p.sendMessage(ChatColor.GRAY + "Gardez-le précieusement !");
+                    p.sendMessage(ChatColor.GRAY + "Il permettra de vous reconnecter");
+                    sendActionBar(p, "§cVoici votre token : §e" + token, 200);
+
+                }
+            }.runTaskLater(this, 20);
+
+
         } else {
             String savedIp = data.getString("players." + p.getName().toLowerCase() + ".ip");
             if (currentIp.equals(savedIp)) {
                 isLogged.put(p.getName().toLowerCase(), true);
-                p.sendMessage(ChatColor.GREEN + "Connexion automatique réussie.");
+
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        p.sendMessage(ChatColor.GREEN + "Connexion automatique réussie.");
+                    }
+                }.runTaskLater(this, 20);
                 restoreInventory(p);
             } else {
                 isLogged.put(p.getName().toLowerCase(), false);
@@ -270,11 +288,24 @@ public class Main extends JavaPlugin implements Listener {
         return data;
     }
 
-
-    public static Main getInstance() {
-
-        return instance;
-
+    public void sendActionBar(Player player, String message, int durationTicks) {
+        new BukkitRunnable() {
+            int timer = durationTicks;
+            @Override
+            public void run() {
+                if (timer <= 0) {
+                    cancel();
+                    return;
+                }
+                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(message));
+                timer--;
+            }
+        }.runTaskTimer(this, 0, 1);
     }
-
 }
+
+
+
+
+
+

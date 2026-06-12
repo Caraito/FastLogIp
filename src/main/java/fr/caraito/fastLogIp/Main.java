@@ -1,7 +1,10 @@
 package fr.caraito.fastLogIp;
 
 import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.*;
 import org.bukkit.command.*;
 import org.bukkit.configuration.file.*;
@@ -105,7 +108,25 @@ public class Main extends JavaPlugin implements Listener {
                 @Override
                 public void run() {
                     p.sendMessage(ChatColor.GREEN + "Bienvenue, vous êtes automatiquement connecté.");
-                    p.sendMessage(ChatColor.YELLOW + "Voici votre token : §e" + token);
+
+                    TextComponent message = new TextComponent("Voici votre token : ");
+                    message.setColor(net.md_5.bungee.api.ChatColor.YELLOW);
+
+                    TextComponent tokenComponent = new TextComponent(token);
+                    tokenComponent.setColor(net.md_5.bungee.api.ChatColor.YELLOW);
+                    tokenComponent.setUnderlined(true);
+                    tokenComponent.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, token));
+                    tokenComponent.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("§eCliquez pour copier")));
+
+                    TextComponent suffix = new TextComponent(" (Cliquer pour copier)");
+                    suffix.setColor(net.md_5.bungee.api.ChatColor.GRAY);
+                    suffix.setItalic(true);
+
+                    message.addExtra(tokenComponent);
+                    message.addExtra(suffix);
+
+                    p.spigot().sendMessage(message);
+
                     p.sendMessage(ChatColor.GRAY + "Gardez-le précieusement !");
                     p.sendMessage(ChatColor.GRAY + "Il permettra de vous reconnecter");
                     sendActionBar(p, "§cVoici votre token : §e" + token, 200);

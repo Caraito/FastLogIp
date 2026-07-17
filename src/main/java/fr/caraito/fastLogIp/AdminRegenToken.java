@@ -45,8 +45,11 @@ public class AdminRegenToken implements CommandExecutor {
         }
 
         String newToken = main.generateToken(8);
-        data.set("players." + targetName + ".token", newToken);
-        main.saveData();
+        main.storeToken(targetName, newToken);
+        if (!main.saveData()) {
+            sender.sendMessage(ChatColor.RED + "Erreur interne lors de l'enregistrement du nouveau token.");
+            return true;
+        }
 
         if (sender instanceof Player playerSender) {
             TextComponent message = new TextComponent("Le token du joueur " + args[0] + " a été régénéré : ");

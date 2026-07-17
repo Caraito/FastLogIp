@@ -21,6 +21,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.logging.Level;
 
 public class Main extends JavaPlugin implements Listener {
 
@@ -30,6 +31,11 @@ public class Main extends JavaPlugin implements Listener {
     public static final Map<String, Long> loginTimeout = new HashMap<>();
     public static final Map<String, Boolean> isInventoryEmpty = new HashMap<>();
     private static Main instance;
+
+    private static final int MAX_LOGIN_ATTEMPTS = 5;
+    private static final long LOGIN_LOCKOUT_MS = 60_000L;
+    private final Map<String, Integer> failedLoginAttempts = new HashMap<>();
+    private final Map<String, Long> loginLockoutUntil = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -52,9 +58,13 @@ public class Main extends JavaPlugin implements Listener {
             dataFile.getParentFile().mkdirs();
             if (!dataFile.exists()) {
                 try {
-                    dataFile.createNewFile();
+                    if (!dataFile.createNewFile()) {
+                        getLogger().severe("Impossible de créer data.yml (raison inconnue).");
+                    }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    getLogger().log(Level.SEVERE, "Impossible de créer data.yml, le plugin va se désactiver.", e);
+                    getServer().getPluginManager().disablePlugin(this);
+                    return;
                 }
             }
 
@@ -62,25 +72,29 @@ public class Main extends JavaPlugin implements Listener {
         data = YamlConfiguration.loadConfiguration(dataFile);
     }
 
-    public void saveData() {
+    public boolean saveData() {
         try {
             data.save(dataFile);
+            return true;
         } catch (IOException e) {
-            e.printStackTrace();
+            getLogger().log(Level.SEVERE, "Erreur lors de la sauvegarde de data.yml", e);
+            return false;
         }
     }
 
     public String generateToken(int length) {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
-        Random random = new Random();
-        StringBuilder token = new StringBuilder();
+        return TokenUtil.generateToken(length);
+    }
 
-        for (int i = 0; i < length; i++) {
-            int index = random.nextInt(chars.length());
-            token.append(chars.charAt(index));
-        }
-
-        return token.toString();
+    /**
+     * Stocke le token sous forme de hash salé (jamais en clair) dans data.yml.
+     */
+    public void storeToken(String playerNameLower, String rawToken) {
+        String salt = TokenUtil.generateSalt();
+        String hash = TokenUtil.hash(rawToken, salt);
+        data.set("players." + playerNameLower + ".tokenSalt", salt);
+        data.set("players." + playerNameLower + ".tokenHash", hash);
+        data.set("players." + playerNameLower + ".token", null);
     }
 
 
@@ -100,8 +114,10 @@ public class Main extends JavaPlugin implements Listener {
         if (!data.contains("players." + p.getName().toLowerCase())) {
             String token = generateToken(8);
             data.set("players." + p.getName().toLowerCase() + ".ip", currentIp);
-            data.set("players." + p.getName().toLowerCase() + ".token", token);
-            saveData();
+            storeToken(p.getName().toLowerCase(), token);
+            if (!saveData()) {
+                p.sendMessage(ChatColor.RED + "Erreur interne lors de l'enregistrement de votre token. Contactez un administrateur.");
+            }
             isLogged.put(p.getName().toLowerCase(), true);
 
             new BukkitRunnable() {
@@ -168,7 +184,8 @@ public class Main extends JavaPlugin implements Listener {
         try {
             invCfg.save(invFile);
         } catch (IOException ex) {
-            ex.printStackTrace();
+            getLogger().log(Level.SEVERE, "Erreur lors de la sauvegarde de l'inventaire de " + p.getName(), ex);
+            p.sendMessage(ChatColor.RED + "Erreur lors de la sauvegarde de votre inventaire. Contactez un administrateur immédiatement.");
         }
     }
 
@@ -217,7 +234,8 @@ public class Main extends JavaPlugin implements Listener {
         try {
             invCfg.save(invFile);
         } catch (IOException e) {
-            e.printStackTrace();
+            getLogger().log(Level.SEVERE, "Erreur lors de la sauvegarde de l'inventaire de " + p.getName() + " après restauration", e);
+            p.sendMessage(ChatColor.RED + "Erreur lors de la sauvegarde de votre inventaire. Contactez un administrateur.");
         }
     }
 
@@ -273,18 +291,61 @@ public class Main extends JavaPlugin implements Listener {
         }
 
         String name = p.getName().toLowerCase();
-        String expectedToken = data.getString("players." + name + ".token");
-        if (args[0].equals(expectedToken)) {
+
+        Long lockedUntil = loginLockoutUntil.get(name);
+        if (lockedUntil != null && System.currentTimeMillis() < lockedUntil) {
+            long remaining = (lockedUntil - System.currentTimeMillis() + 999) / 1000;
+            p.sendMessage(ChatColor.RED + "Trop de tentatives échouées. Réessayez dans " + remaining + "s.");
+            return true;
+        }
+
+        boolean valid = checkToken(name, args[0]);
+
+        if (valid) {
+            failedLoginAttempts.remove(name);
+            loginLockoutUntil.remove(name);
             isLogged.put(name, true);
             data.set("players." + name + ".ip", p.getAddress().getAddress().getHostAddress());
-            saveData();
+            if (!saveData()) {
+                p.sendMessage(ChatColor.RED + "Erreur interne lors de l'enregistrement de votre connexion. Contactez un administrateur.");
+            }
             p.sendMessage(ChatColor.GREEN + "Connexion réussie !");
             restoreInventory(p);
         } else {
-            p.sendMessage(ChatColor.RED + "Token invalide.");
+            int attempts = failedLoginAttempts.merge(name, 1, Integer::sum);
+            if (attempts >= MAX_LOGIN_ATTEMPTS) {
+                loginLockoutUntil.put(name, System.currentTimeMillis() + LOGIN_LOCKOUT_MS);
+                failedLoginAttempts.remove(name);
+                p.sendMessage(ChatColor.RED + "Trop de tentatives échouées. Vous devez attendre " + (LOGIN_LOCKOUT_MS / 1000) + "s avant de réessayer.");
+            } else {
+                p.sendMessage(ChatColor.RED + "Token invalide.");
+            }
         }
         return true;
 
+    }
+
+    /**
+     * Vérifie le token fourni contre le hash salé stocké. Si un ancien token en clair
+     * (avant migration vers le hashage) est trouvé et correspond, il est migré vers un
+     * hash salé automatiquement.
+     */
+    private boolean checkToken(String nameLower, String providedToken) {
+        String storedHash = data.getString("players." + nameLower + ".tokenHash");
+        String storedSalt = data.getString("players." + nameLower + ".tokenSalt");
+
+        if (storedHash != null && storedSalt != null) {
+            return TokenUtil.matches(providedToken, storedSalt, storedHash);
+        }
+
+        String legacyToken = data.getString("players." + nameLower + ".token");
+        if (legacyToken != null && TokenUtil.constantTimeEquals(providedToken, legacyToken)) {
+            storeToken(nameLower, providedToken);
+            saveData();
+            return true;
+        }
+
+        return false;
     }
 
 

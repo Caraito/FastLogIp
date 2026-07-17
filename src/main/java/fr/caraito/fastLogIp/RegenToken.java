@@ -8,18 +8,14 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
 public class RegenToken implements CommandExecutor {
 
-    private final FileConfiguration data;
     private final Main main;
 
     public RegenToken(Main main) {
         this.main = main;
-        this.data = main.getDataFile();
     }
 
     @Override
@@ -37,8 +33,11 @@ public class RegenToken implements CommandExecutor {
             }
 
             String newToken = main.generateToken(8);
-            data.set("players." + player.getName().toLowerCase() + ".token", newToken);
-            main.saveData();
+            main.storeToken(player.getName().toLowerCase(), newToken);
+            if (!main.saveData()) {
+                player.sendMessage(ChatColor.RED + "Erreur interne lors de l'enregistrement du nouveau token. Contactez un administrateur.");
+                return true;
+            }
 
             TextComponent message = new TextComponent("Voici votre nouveau token : ");
             message.setColor(net.md_5.bungee.api.ChatColor.YELLOW);

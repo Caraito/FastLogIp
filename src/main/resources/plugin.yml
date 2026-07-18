@@ -11,3 +11,5 @@ commands:
   adminregentoken:
     description: Régénérer le token d'un joueur
     permission: fastlogip.admin
+  setpassword:
+    description: Définir un mot de passe personnalisé (en plus du token)

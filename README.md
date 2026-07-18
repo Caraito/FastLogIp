@@ -12,6 +12,7 @@ FastAuth permet aux joueurs de se connecter automatiquement s'ils sont déjà re
 
 - 🔐 Connexion automatique par IP
 - 🧠 Génération de token sécurisé
+- 🔑 Mot de passe personnalisé au choix du joueur (en plus du token)
 - 👮‍♂️ Blocage total tant que non connecté
 - 🔁 Commandes d’administration pour régénérer les tokens
 - 📂 Sauvegarde automatique de l’inventaire des joueurs non connectés
@@ -21,6 +22,7 @@ FastAuth permet aux joueurs de se connecter automatiquement s'ils sont déjà re
 | Commande                    | Description |
 |-----------------------------|-------------|
 | `/regentoken`               | Génère un nouveau token pour soi |
+| `/setpassword <mot de passe>` | Définit un mot de passe personnalisé (≥ 6 caractères) ; se connecter fonctionne ensuite avec le mot de passe **ou** le token d’origine |
 | `/adminregentoken <pseudo>` | Admin uniquement – régénère le token d’un autre joueur |
 
 ## 🔐 Permissions

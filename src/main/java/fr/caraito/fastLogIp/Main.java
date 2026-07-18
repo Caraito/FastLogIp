@@ -48,6 +48,7 @@ public class Main extends JavaPlugin implements Listener {
         getCommand("login").setExecutor(this);
         getCommand("regentoken").setExecutor(new RegenToken(this));
         getCommand("adminregentoken").setExecutor(new AdminRegenToken(this));
+        getCommand("setpassword").setExecutor(new SetPassword(this));
         new LoginChecker().runTaskTimer(this, 20L, 20L);
 
     }
@@ -95,6 +96,17 @@ public class Main extends JavaPlugin implements Listener {
         data.set("players." + playerNameLower + ".tokenSalt", salt);
         data.set("players." + playerNameLower + ".tokenHash", hash);
         data.set("players." + playerNameLower + ".token", null);
+    }
+
+    /**
+     * Stocke un mot de passe personnalisé sous forme de hash salé, en plus du token
+     * d'origine (les deux restent valides pour /login).
+     */
+    public void storePassword(String playerNameLower, String rawPassword) {
+        String salt = TokenUtil.generateSalt();
+        String hash = TokenUtil.hash(rawPassword, salt);
+        data.set("players." + playerNameLower + ".passwordSalt", salt);
+        data.set("players." + playerNameLower + ".passwordHash", hash);
     }
 
 
@@ -326,16 +338,24 @@ public class Main extends JavaPlugin implements Listener {
     }
 
     /**
-     * Vérifie le token fourni contre le hash salé stocké. Si un ancien token en clair
-     * (avant migration vers le hashage) est trouvé et correspond, il est migré vers un
-     * hash salé automatiquement.
+     * Vérifie la valeur fournie contre le token d'origine ET, s'il existe, le mot de
+     * passe personnalisé défini par le joueur (les deux restent valides pour /login).
+     * Si un ancien token en clair (avant migration vers le hashage) est trouvé et
+     * correspond, il est migré vers un hash salé automatiquement.
      */
     private boolean checkToken(String nameLower, String providedToken) {
         String storedHash = data.getString("players." + nameLower + ".tokenHash");
         String storedSalt = data.getString("players." + nameLower + ".tokenSalt");
 
-        if (storedHash != null && storedSalt != null) {
-            return TokenUtil.matches(providedToken, storedSalt, storedHash);
+        if (storedHash != null && storedSalt != null && TokenUtil.matches(providedToken, storedSalt, storedHash)) {
+            return true;
+        }
+
+        String passwordHash = data.getString("players." + nameLower + ".passwordHash");
+        String passwordSalt = data.getString("players." + nameLower + ".passwordSalt");
+
+        if (passwordHash != null && passwordSalt != null && TokenUtil.matches(providedToken, passwordSalt, passwordHash)) {
+            return true;
         }
 
         String legacyToken = data.getString("players." + nameLower + ".token");
